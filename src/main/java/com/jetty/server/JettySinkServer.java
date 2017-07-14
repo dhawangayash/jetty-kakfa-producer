@@ -13,24 +13,6 @@ public class JettySinkServer {
         server.join();
     }
 
-/*
-    curl -X POST -H "Content-Type: application/json"
-            --data '{"name": "s3-sink-rt-4",
-            "config": {
-                "connector.class":"io.confluent.connect.s3.S3SinkConnector",
-                "tasks.max":"1",
-                "topics":"connect-distributed-realtime-jul12-1114",
-                "storage.class": "io.confluent.connect.s3.storage.S3Storage",
-                "partition.duration.ms": "100",
-                "key.converter.schemas.enable": "false",
-                "partitioner.class": "io.confluent.connect.storage.partitioner.DefaultPartitioner",
-                "schema.generator.class": "io.confluent.connect.storage.hive.schema.DefaultSchemaGenerator",
-                "s3.part.size": "5242880",
-                "format.class": "io.confluent.connect.s3.format.json.JsonFormat", "timezone": "GMT", "locale": "US", "schema.compatibility": "NONE", "connector.class": "io.confluent.connect.s3.S3SinkConnector", "s3.region": "us-west-2", "value.converter.schemas.enable": "false", "flush.size": "3", "s3.bucket.name": "datavisor-dev"}}' http://localhost:8083/connectors
-*/
-
-
-
     private static void processArgs(String... args) {
         String brokers = new String();
         int retries = 0;

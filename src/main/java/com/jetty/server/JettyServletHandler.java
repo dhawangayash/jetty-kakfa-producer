@@ -1,7 +1,6 @@
 package com.jetty.server;
 
 import io.prometheus.client.Counter;
-import io.prometheus.client.Gauge;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.api.Result;
@@ -23,7 +22,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Created by dhawangayash on 7/14/17.
+ * Copyright (c) 2017, DATAVISOR, INC.
+ * All rights reserved.
+ * __________________
+ *
+ * NOTICE: All information contained herein is, and remains the property
+ * of DataVisor, Inc.  The intellectual and technical concepts contained
+ * herein are proprietary to DataVisor, Inc. and may be covered by
+ * U.S. and Foreign Patents, patents in process, and are protected by
+ * trade secret or copyright law.  Dissemination of this information or
+ * reproduction of this material is strictly forbidden unless prior
+ * written permission is obtained from DataVisor, Inc.
+ *
  */
 public class JettyServletHandler extends HttpServlet {
 

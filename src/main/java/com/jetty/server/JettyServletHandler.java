@@ -82,26 +82,6 @@ public class JettyServletHandler extends HttpServlet {
 
         utilityClass.sendReqToKafkaExecutor(newJsonOBject);
         response.getWriter().println("SUCCESS");
-
-//      System.out.println(newJsonOBject.toString());
-
-//            new Thread(new Runnable() {
-//                @Override
-//                public void run() {
-//
-//                    sendReqToKafka(newJsonOBject);
-//                }
-//            }).start();
-
-//        String payload = "{\"application_nm\":\"datastream\",\"customer\":\"apple\"}";
-
-//        PostToKafka post2Kafka = new PostToKafka();
-//        try {
-//            post2Kafka.write2Kafka(payload);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        post2Kafka = null;
     }
 
     protected UtilityClass getInstance() {
@@ -179,62 +159,6 @@ public class JettyServletHandler extends HttpServlet {
             }
         }
     }
-
-    /**
-     * public void sendReqToKafka(JSONObject newJsonObject) {
-     * //        Timer timer = new Timer();
-     * HttpClientTransportOverHTTP transport = new HttpClientTransportOverHTTP();
-     * HttpClient httpClient = new HttpClient(transport, null);
-     * transport.setHttpClient(httpClient);
-     * <p>
-     * org.eclipse.jetty.client.api.Request request =
-     * httpClient.POST("http://0.0.0.0:8082/topics/topic-1234");
-     * <p>
-     * request.header(HttpHeader.CONTENT_TYPE, "application/vnd.kafka.json.v2+json")
-     * .header(HttpHeader.ACCEPT, "application/json");
-     * <p>
-     * request.content(new StringContentProvider(newJsonObject.toString()));
-     * try {
-     * httpClient.start();
-     * Timer timer = new Timer();
-     * request.send();
-     * timer.getElapsedTime();
-     * } catch (Exception e) {
-     * e.printStackTrace();
-     * }
-     * <p>
-     * request.send(new BufferingResponseListener() {
-     *
-     * @Override public void onComplete(Result result) {
-     * if (result.isFailed()) {
-     * System.out.println(result.getResponse().getStatus());
-     * System.out.println(result);
-     * System.out.println("OMG");
-     * }
-     * if (result.isSucceeded()) {
-     * System.out.println("WOW!!");
-     * }
-     * }
-     * });
-     * }
-     * <p>
-     * public void sendReqToKafkaPOST(JSONObject newJsonObject) {
-     * CloseableHttpClient client = HttpClients.createMinimal();
-     * HttpPost post = new HttpPost("http://0.0.0.0:8082/topics/topic-rest-client");
-     * post.setHeader(HttpHeaders.CONTENT_TYPE, "application/vnd.kafka.json.v2+json");
-     * try {
-     * post.setEntity(new StringEntity(newJsonObject.toString()));
-     * <p>
-     * Timer timer = new Timer();
-     * CloseableHttpResponse response = client.execute(post);
-     * timer.getElapsedTime();
-     * System.out.println(response.getStatusLine().getStatusCode());
-     * client.close();
-     * } catch (IOException e) {
-     * e.printStackTrace();
-     * }
-     * }
-     */
 
     class Timer {
         long startTime = System.currentTimeMillis();

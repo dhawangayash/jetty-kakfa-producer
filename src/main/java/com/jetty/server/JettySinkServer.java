@@ -28,8 +28,6 @@ public class JettySinkServer {
     {
         // processArgs(args);
         Server server = new Server(9080);
-        // server.setHandler(new JettyHandler());
-
         ServletContextHandler context = new ServletContextHandler();
         context.setContextPath("/");
         server.setHandler(context);

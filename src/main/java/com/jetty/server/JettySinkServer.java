@@ -1,3 +1,16 @@
+/**
+ * Copyright (c) 2017, DATAVISOR, INC.
+ * All rights reserved.
+ * __________________
+ * <p>
+ * NOTICE: All information contained herein is, and remains the property
+ * of DataVisor, Inc.  The intellectual and technical concepts contained
+ * herein are proprietary to DataVisor, Inc. and may be covered by
+ * U.S. and Foreign Patents, patents in process, and are protected by
+ * trade secret or copyright law.  Dissemination of this information or
+ * reproduction of this material is strictly forbidden unless prior
+ * written permission is obtained from DataVisor, Inc.
+ */
 package com.jetty.server;
 
 import io.prometheus.client.exporter.MetricsServlet;
@@ -7,29 +20,15 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.StatisticsHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/**
- * Copyright (c) 2017, DATAVISOR, INC.
- * All rights reserved.
- * __________________
- *
- * NOTICE: All information contained herein is, and remains the property
- * of DataVisor, Inc.  The intellectual and technical concepts contained
- * herein are proprietary to DataVisor, Inc. and may be covered by
- * U.S. and Foreign Patents, patents in process, and are protected by
- * trade secret or copyright law.  Dissemination of this information or
- * reproduction of this material is strictly forbidden unless prior
- * written permission is obtained from DataVisor, Inc.
- *
- */
 public class JettySinkServer {
- 
-    public static void main(String[] args) throws Exception
-    {
+    private static final Logger LOG = LoggerFactory.getLogger(JettySinkServer.class);
+
+    public static void main(String[] args) throws Exception {
         // processArgs(args);
         Server server = new Server(9080);
-        // server.setHandler(new JettyHandler());
-
         ServletContextHandler context = new ServletContextHandler();
         context.setContextPath("/");
         server.setHandler(context);
@@ -38,7 +37,6 @@ public class JettySinkServer {
         DefaultExports.initialize();
 
         // Add metrics about CPU, JVM memory
-
         StatisticsHandler stats = new StatisticsHandler();
         stats.setHandler(server.getHandler());
         server.setHandler(stats);

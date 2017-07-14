@@ -1,3 +1,16 @@
+/**
+ * Copyright (c) 2017, DATAVISOR, INC.
+ * All rights reserved.
+ * __________________
+ * <p>
+ * NOTICE: All information contained herein is, and remains the property
+ * of DataVisor, Inc.  The intellectual and technical concepts contained
+ * herein are proprietary to DataVisor, Inc. and may be covered by
+ * U.S. and Foreign Patents, patents in process, and are protected by
+ * trade secret or copyright law.  Dissemination of this information or
+ * reproduction of this material is strictly forbidden unless prior
+ * written permission is obtained from DataVisor, Inc.
+ */
 package com.jetty.server;
 
 import io.prometheus.client.Counter;
@@ -10,6 +23,8 @@ import org.eclipse.jetty.http.HttpMethod;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -21,21 +36,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Copyright (c) 2017, DATAVISOR, INC.
- * All rights reserved.
- * __________________
- *
- * NOTICE: All information contained herein is, and remains the property
- * of DataVisor, Inc.  The intellectual and technical concepts contained
- * herein are proprietary to DataVisor, Inc. and may be covered by
- * U.S. and Foreign Patents, patents in process, and are protected by
- * trade secret or copyright law.  Dissemination of this information or
- * reproduction of this material is strictly forbidden unless prior
- * written permission is obtained from DataVisor, Inc.
- *
- */
 public class JettyServletHandler extends HttpServlet {
+    private static final Logger LOG = LoggerFactory.getLogger(JettyServletHandler.class);
 
     private final HttpClient client = new HttpClient();
     private final static String DELIMITER = "-";
@@ -44,64 +46,56 @@ public class JettyServletHandler extends HttpServlet {
         success_request,
         failed_json_parsing_request,
         failed_json_translation,
-        failed_publish_to_kafka;
+        failed_publish_to_kafka,
+        topic_resolution_error;
     }
 
-    static final Counter success_request_cnt = Counter.build().name(Events.success_request.name()).help("Incoming requests.").register();
-    static final Counter failed_json_parsing_request_cnt = Counter.build().name(Events.failed_json_parsing_request.name()).help("Total failed json parsing requests.").register();
-    static final Counter failed_json_translation_cnt = Counter.build().name(Events.failed_json_translation.name()).help("Total failed json translation requests").register();
-    static final Counter failed_publish_to_kafka_cnt = Counter.build().name(Events.failed_publish_to_kafka.name()).help("Total failed publish to kafka requests.").register();
+    static final Counter success_request_cnt = Counter.build().name(Events.success_request.name())
+            .help("Incoming requests.").register();
+    static final Counter failed_json_parsing_request_cnt = Counter.build()
+            .name(Events.failed_json_parsing_request.name())
+            .help("Total failed json parsing requests.").register();
+    static final Counter failed_json_translation_cnt = Counter.build()
+            .name(Events.failed_json_translation.name())
+            .help("Total failed json translation requests").register();
+    static final Counter failed_publish_to_kafka_cnt = Counter.build()
+            .name(Events.failed_publish_to_kafka.name())
+            .help("Total failed publish to kafka requests.").register();
+
+    static final Counter topic_resolution_error = Counter.build()
+            .name(Events.topic_resolution_error.name())
+            .help("Topic failed resolutoin error.").register();
 
     public JettyServletHandler() throws Exception {
-        System.out.println("Starting Jetty HttpClient...");
+        LOG.info("Starting Jetty HttpClient...");
         client.start();
     }
 
-
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         UtilityClass utilityClass = new UtilityClass();
-        System.out.println("Called at: " + System.currentTimeMillis());
+        LOG.debug("Called at: " + System.currentTimeMillis());
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
 
         String jsonRequest = utilityClass.retriveJSONRequest(request);
-        System.out.println("+++++" + jsonRequest);
+        LOG.debug("'" + jsonRequest + "'");
         JSONObject newJsonOBject = null;
         try {
             newJsonOBject = utilityClass.convertJSONToKafka(jsonRequest);
         } catch (JSONException e) {
             failed_json_translation_cnt.inc();
-            e.printStackTrace();
+            LOG.error(e.getMessage(), e);
         }
 
-        System.out.println("URI:'" + request.getRequestURI() + "'");
+        LOG.debug("URI:'" + request.getRequestURI() + "'");
         List<String> clients = new ClientProcessor().processingURI(request.getRequestURI());
-        System.out.println(clients.stream().collect(Collectors.joining(", ", "[", "]")));
+        LOG.info(clients.stream().collect(Collectors.joining(", ", "[", "]")));
         String topicName = utilityClass.calculateKafkaTopic(clients, jsonRequest);
 
         utilityClass.sendReqToKafkaExecutor(newJsonOBject);
         response.getWriter().println("SUCCESS");
-
-//      System.out.println(newJsonOBject.toString());
-
-//            new Thread(new Runnable() {
-//                @Override
-//                public void run() {
-//
-//                    sendReqToKafka(newJsonOBject);
-//                }
-//            }).start();
-
-//        String payload = "{\"application_nm\":\"datastream\",\"customer\":\"apple\"}";
-
-//        PostToKafka post2Kafka = new PostToKafka();
-//        try {
-//            post2Kafka.write2Kafka(payload);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        post2Kafka = null;
     }
 
     protected UtilityClass getInstance() {
@@ -118,11 +112,12 @@ public class JettyServletHandler extends HttpServlet {
                 while (iter.hasNext()) {
                     String key1 = (String) iter.next();
                     if (key1.equalsIgnoreCase("client")) {
-                        kafkaTopic.append(DELIMITER).append((String)json.get(key1));
+                        kafkaTopic.append(DELIMITER).append((String) json.get(key1));
                     }
                 }
             } catch (JSONException e) {
-
+                topic_resolution_error.inc();
+                LOG.error(e.getMessage(), e);
             }
             return kafkaTopic.toString();
         }
@@ -138,7 +133,7 @@ public class JettyServletHandler extends HttpServlet {
                 return sb.toString();
             } catch (Exception e) {
                 failed_json_parsing_request_cnt.inc();
-                e.printStackTrace();
+                LOG.error(e.getMessage(), e);
             }
             return null;
         }
@@ -157,7 +152,7 @@ public class JettyServletHandler extends HttpServlet {
             if (json == null || json.toString() == null) {
                 return;
             }
-            System.out.println("Sending clientRequest...");
+            LOG.debug("Sending clientRequest...");
             try {
                 Timer timer = new Timer();
                 client.newRequest("http://0.0.0.0:8082/topics/topic-5678")
@@ -168,80 +163,24 @@ public class JettyServletHandler extends HttpServlet {
                         .send(new Response.CompleteListener() {
                             @Override
                             public void onComplete(Result result) {
-                                System.out.println("Completed: " + result.getResponse().getStatus());
+                                LOG.debug("Completed: " + result.getResponse().getStatus());
                             }
                         });
                 timer.getElapsedTime();
                 success_request_cnt.inc();
             } catch (Exception e) {
                 failed_publish_to_kafka_cnt.inc();
-                e.printStackTrace();
+                LOG.debug(e.getMessage(), e);
             }
         }
     }
-
-    /**
-     * public void sendReqToKafka(JSONObject newJsonObject) {
-     * //        Timer timer = new Timer();
-     * HttpClientTransportOverHTTP transport = new HttpClientTransportOverHTTP();
-     * HttpClient httpClient = new HttpClient(transport, null);
-     * transport.setHttpClient(httpClient);
-     * <p>
-     * org.eclipse.jetty.client.api.Request request =
-     * httpClient.POST("http://0.0.0.0:8082/topics/topic-1234");
-     * <p>
-     * request.header(HttpHeader.CONTENT_TYPE, "application/vnd.kafka.json.v2+json")
-     * .header(HttpHeader.ACCEPT, "application/json");
-     * <p>
-     * request.content(new StringContentProvider(newJsonObject.toString()));
-     * try {
-     * httpClient.start();
-     * Timer timer = new Timer();
-     * request.send();
-     * timer.getElapsedTime();
-     * } catch (Exception e) {
-     * e.printStackTrace();
-     * }
-     * <p>
-     * request.send(new BufferingResponseListener() {
-     *
-     * @Override public void onComplete(Result result) {
-     * if (result.isFailed()) {
-     * System.out.println(result.getResponse().getStatus());
-     * System.out.println(result);
-     * System.out.println("OMG");
-     * }
-     * if (result.isSucceeded()) {
-     * System.out.println("WOW!!");
-     * }
-     * }
-     * });
-     * }
-     * <p>
-     * public void sendReqToKafkaPOST(JSONObject newJsonObject) {
-     * CloseableHttpClient client = HttpClients.createMinimal();
-     * HttpPost post = new HttpPost("http://0.0.0.0:8082/topics/topic-rest-client");
-     * post.setHeader(HttpHeaders.CONTENT_TYPE, "application/vnd.kafka.json.v2+json");
-     * try {
-     * post.setEntity(new StringEntity(newJsonObject.toString()));
-     * <p>
-     * Timer timer = new Timer();
-     * CloseableHttpResponse response = client.execute(post);
-     * timer.getElapsedTime();
-     * System.out.println(response.getStatusLine().getStatusCode());
-     * client.close();
-     * } catch (IOException e) {
-     * e.printStackTrace();
-     * }
-     * }
-     */
 
     class Timer {
         long startTime = System.currentTimeMillis();
 
         public void getElapsedTime() {
             long elapsedTime = System.currentTimeMillis() - startTime;
-            System.out.println("ElapsedTime:'" + elapsedTime + "'");
+            LOG.debug("ElapsedTime:'" + elapsedTime + "'");
         }
     }
 }

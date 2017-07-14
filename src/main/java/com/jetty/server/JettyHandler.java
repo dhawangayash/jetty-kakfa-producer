@@ -1,7 +1,6 @@
 package com.jetty.server;
 
 import org.apache.http.HttpHeaders;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -16,6 +15,7 @@ import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.servlet.ServletException;
@@ -23,48 +23,36 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 
 
 public class JettyHandler extends AbstractHandler {
-    public void handle(String target,
-                       Request baseRequest,
-                       HttpServletRequest request,
-                       HttpServletResponse response)
+    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-//        System.out.println("Request ==> " + request.getReader());
+        // System.out.println("Request ==> " + request.getReader());
 
-        BufferedReader reader = request.getReader();
-        StringBuilder sb = new StringBuilder();
+        String jsonReqeust = retriveJSONRequest(request);
+        JSONObject newJsonOBject = null;
         try {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line).append("\n");
-            }
-            JSONObject jsonObject = new JSONObject(sb.toString());
-            JSONObject newJsonOBject = new JSONObject();
-
-            JSONObject value = new JSONObject();
-            value.put("value", jsonObject);
-            newJsonOBject.put("records", new JSONArray().put(value));
-
-//            System.out.println(newJsonOBject.toString());
-
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    sendReqToKafka(newJsonOBject);
-                }
-            }).start();
-
-        } catch (Exception e) {
+            newJsonOBject = convertJSONToKafka(jsonReqeust);
+        } catch (JSONException e) {
             e.printStackTrace();
-        } finally {
-            reader.close();
         }
+
+        sendReqToKafka(newJsonOBject);
+        response.getWriter().println("SUCCESS");
+//      System.out.println(newJsonOBject.toString());
+
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//
+//                    sendReqToKafka(newJsonOBject);
+//                }
+//            }).start();
+
 //        String payload = "{\"application_nm\":\"datastream\",\"customer\":\"apple\"}";
 
 //        PostToKafka post2Kafka = new PostToKafka();
@@ -74,9 +62,30 @@ public class JettyHandler extends AbstractHandler {
 //            e.printStackTrace();
 //        }
 //        post2Kafka = null;
-        response.getWriter().println("SUCCESS");
     }
 
+    private String retriveJSONRequest(HttpServletRequest request) {
+        try (BufferedReader reader = request.getReader()) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null)
+                sb.append(line).append("\n");
+            return sb.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private JSONObject convertJSONToKafka(String json) throws JSONException {
+        JSONObject jsonObject = new JSONObject(json);
+        JSONObject newJsonOBject = new JSONObject();
+
+        JSONObject value = new JSONObject();
+        value.put("value", jsonObject);
+        newJsonOBject.put("records", new JSONArray().put(value));
+        return newJsonOBject;
+    }
 
     public void sendReqToKafkaPOST(JSONObject newJsonObject) {
         CloseableHttpClient client = HttpClients.createMinimal();
@@ -99,31 +108,36 @@ public class JettyHandler extends AbstractHandler {
         HttpClientTransportOverHTTP transport = new HttpClientTransportOverHTTP();
         HttpClient httpClient = new HttpClient(transport, null);
         transport.setHttpClient(httpClient);
+
         org.eclipse.jetty.client.api.Request request =
                 httpClient.POST("http://0.0.0.0:8082/topics/topic-1234");
+
         request.header(HttpHeader.CONTENT_TYPE, "application/vnd.kafka.json.v2+json")
                 .header(HttpHeader.ACCEPT, "application/json");
+
         request.content(new StringContentProvider(newJsonObject.toString()));
         try {
             httpClient.start();
+            Timer timer = new Timer();
             request.send();
+            timer.getElapsedTime();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         request.send(new BufferingResponseListener() {
-                    @Override
-                    public void onComplete(Result result) {
-                        if (result.isFailed()) {
-                            System.out.println(result.getResponse().getStatus());
-                            System.out.println(result);
-                            System.out.println("OMG");
-                        }
-                        if (result.isSucceeded()) {
-                            System.out.println("WOW!!");
-                        }
-                    }
-                });
+            @Override
+            public void onComplete(Result result) {
+                if (result.isFailed()) {
+                    System.out.println(result.getResponse().getStatus());
+                    System.out.println(result);
+                    System.out.println("OMG");
+                }
+                if (result.isSucceeded()) {
+                    System.out.println("WOW!!");
+                }
+            }
+        });
     }
 
     class Timer {

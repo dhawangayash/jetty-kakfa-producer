@@ -7,11 +7,13 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.api.Result;
 import org.eclipse.jetty.client.http.HttpClientTransportOverHTTP;
 import org.eclipse.jetty.client.util.BufferingResponseListener;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
+import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.json.JSONArray;
@@ -26,14 +28,29 @@ import java.io.IOException;
 
 
 public class JettyHandler extends AbstractHandler {
-    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-            throws IOException, ServletException {
+
+    private final HttpClient client = new HttpClient();
+
+    public JettyHandler() {
+        System.out.println("Starting Jetty HttpClient...");
+        try {
+            client.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    public void handle(String target,
+            Request baseRequest, HttpServletRequest request,
+                       HttpServletResponse response)
+            throws IOException, ServletException
+    {
+        System.out.println("Called at: " + System.currentTimeMillis());
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-        // System.out.println("Request ==> " + request.getReader());
 
         String jsonReqeust = retriveJSONRequest(request);
+        System.out.println("+++++" + jsonReqeust);
         JSONObject newJsonOBject = null;
         try {
             newJsonOBject = convertJSONToKafka(jsonReqeust);
@@ -41,7 +58,7 @@ public class JettyHandler extends AbstractHandler {
             e.printStackTrace();
         }
 
-        sendReqToKafka(newJsonOBject);
+        sendReqToKafkaExecutor(newJsonOBject);
         response.getWriter().println("SUCCESS");
 //      System.out.println(newJsonOBject.toString());
 
@@ -104,7 +121,33 @@ public class JettyHandler extends AbstractHandler {
         }
     }
 
+    public void sendReqToKafkaExecutor(JSONObject json) {
+
+        System.out.println("Sending clientRequest...");
+        try {
+            Timer timer = new Timer();
+            client.newRequest("http://0.0.0.0:8082/topics/topic-5678")
+                    .method(HttpMethod.POST)
+                    .header(HttpHeader.CONTENT_TYPE, "application/vnd.kafka.json.v2+json")
+                    .header(HttpHeader.ACCEPT, "application/json")
+                    .content(new StringContentProvider(json.toString()))
+                    .send(new Response.CompleteListener()
+                    {
+                        @Override
+                        public void onComplete(Result result)
+                        {
+                            System.out.println("Completed: "+result.getResponse().getStatus());
+                        }
+                    });
+            timer.getElapsedTime();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
     public void sendReqToKafka(JSONObject newJsonObject) {
+//        Timer timer = new Timer();
         HttpClientTransportOverHTTP transport = new HttpClientTransportOverHTTP();
         HttpClient httpClient = new HttpClient(transport, null);
         transport.setHttpClient(httpClient);

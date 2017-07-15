@@ -1,6 +1,12 @@
 package com.jetty.server;
 
+import io.prometheus.client.exporter.MetricsServlet;
+import io.prometheus.client.hotspot.DefaultExports;
+import io.prometheus.client.jetty.JettyStatisticsCollector;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.StatisticsHandler;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 
 public class JettySinkServer {
  
@@ -8,7 +14,23 @@ public class JettySinkServer {
     {
 //        processArgs(args);
         Server server = new Server(9080);
-        server.setHandler(new JettyHandler());
+//        server.setHandler(new JettyHandler());
+
+        ServletContextHandler context = new ServletContextHandler();
+        context.setContextPath("/");
+        server.setHandler(context);
+        context.addServlet(new ServletHolder(new JettyServletHandler()), "/jetty");
+        context.addServlet(new ServletHolder(new MetricsServlet()), "/metrics");
+        DefaultExports.initialize();
+
+//         Add metrics about CPU, JVM memory
+//
+        StatisticsHandler stats = new StatisticsHandler();
+        stats.setHandler(server.getHandler());
+        server.setHandler(stats);
+
+        new JettyStatisticsCollector(stats).register();
+
         server.start();
         server.join();
     }
@@ -25,6 +47,6 @@ public class JettySinkServer {
                 retries = Integer.parseInt(value);
 
         }
-        KafkaProducerSingleton._INSTANCE.setKafkaProducerProps(brokers, retries);
+        PostToKafka.KafkaProducerSingleton._INSTANCE.setKafkaProducerProps(brokers, retries);
     }
 }

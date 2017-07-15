@@ -16,19 +16,21 @@ import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
 
-
-public class JettyHandler extends AbstractHandler {
+/**
+ * Created by dhawangayash on 7/14/17.
+ */
+public class JettyServletHandler extends HttpServlet {
 
     private final HttpClient client = new HttpClient();
 
@@ -48,20 +50,18 @@ public class JettyHandler extends AbstractHandler {
     static final Counter failed_publish_to_kafka_cnt = Counter.build()
             .name(Events.failed_publish_to_kafka.name()).help("Total failed publish to kafka requests.").register();
 
-    public JettyHandler() throws Exception {
+    public JettyServletHandler() throws Exception {
         System.out.println("Starting Jetty HttpClient...");
         client.start();
     }
 
-    public void handle(String target,
-                       Request baseRequest, HttpServletRequest request,
-                       HttpServletResponse response)
-            throws IOException, ServletException
-    {
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         System.out.println("Called at: " + System.currentTimeMillis());
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
-        baseRequest.setHandled(true);
+//        baseRequest.setHandled(true);
 
         String jsonReqeust = retriveJSONRequest(request);
         System.out.println("+++++" + jsonReqeust);
@@ -75,6 +75,7 @@ public class JettyHandler extends AbstractHandler {
 
         sendReqToKafkaExecutor(newJsonOBject);
         response.getWriter().println("SUCCESS");
+
 //      System.out.println(newJsonOBject.toString());
 
 //            new Thread(new Runnable() {

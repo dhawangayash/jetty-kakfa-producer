@@ -12,19 +12,19 @@ public class JettySinkServer {
  
     public static void main(String[] args) throws Exception
     {
-//        processArgs(args);
+        // processArgs(args);
         Server server = new Server(9080);
-//        server.setHandler(new JettyHandler());
+        // server.setHandler(new JettyHandler());
 
         ServletContextHandler context = new ServletContextHandler();
         context.setContextPath("/");
         server.setHandler(context);
-        context.addServlet(new ServletHolder(new JettyServletHandler()), "/jetty");
+        context.addServlet(new ServletHolder(new JettyServletHandler()), "/jetty/*");
         context.addServlet(new ServletHolder(new MetricsServlet()), "/metrics");
         DefaultExports.initialize();
 
-//         Add metrics about CPU, JVM memory
-//
+        // Add metrics about CPU, JVM memory
+
         StatisticsHandler stats = new StatisticsHandler();
         stats.setHandler(server.getHandler());
         server.setHandler(stats);
@@ -34,7 +34,7 @@ public class JettySinkServer {
         server.start();
         server.join();
     }
-
+/*
     private static void processArgs(String... args) {
         String brokers = new String();
         int retries = 0;
@@ -49,4 +49,5 @@ public class JettySinkServer {
         }
         PostToKafka.KafkaProducerSingleton._INSTANCE.setKafkaProducerProps(brokers, retries);
     }
+    */
 }

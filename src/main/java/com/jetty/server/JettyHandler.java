@@ -1,5 +1,5 @@
 package com.jetty.server;
-
+/*
 import io.prometheus.client.Counter;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -26,9 +26,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
+*/
 
-
-public class JettyHandler extends AbstractHandler {
+public class JettyHandler {}
+/*
+extends AbstractHandler {
 
     private final HttpClient client = new HttpClient();
 
@@ -96,12 +98,12 @@ public class JettyHandler extends AbstractHandler {
 //        post2Kafka = null;
     }
 
-    private String retriveJSONRequest(HttpServletRequest request) {
+    protected String retriveJSONRequest(HttpServletRequest request) {
         try (BufferedReader reader = request.getReader()) {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null)
-                sb.append(line).append("\n");
+                sb.append(line);
             return sb.toString();
         } catch (Exception e) {
             failed_json_parsing_request_cnt.inc();
@@ -110,7 +112,7 @@ public class JettyHandler extends AbstractHandler {
         return null;
     }
 
-    private JSONObject convertJSONToKafka(String json) throws JSONException {
+    protected JSONObject convertJSONToKafka(String json) throws JSONException {
         JSONObject jsonObject = new JSONObject(json);
         JSONObject newJsonOBject = new JSONObject();
 
@@ -145,7 +147,9 @@ public class JettyHandler extends AbstractHandler {
             e.printStackTrace();
         }
     }
+*/
 
+/**
     public void sendReqToKafka(JSONObject newJsonObject) {
 //        Timer timer = new Timer();
         HttpClientTransportOverHTTP transport = new HttpClientTransportOverHTTP();
@@ -199,7 +203,9 @@ public class JettyHandler extends AbstractHandler {
             e.printStackTrace();
         }
     }
+*/
 
+/**
     class Timer {
         long startTime = System.currentTimeMillis();
 
@@ -208,4 +214,5 @@ public class JettyHandler extends AbstractHandler {
             System.out.println("ElapsedTime:'" + elapsedTime + "'");
         }
     }
-}
+
+}*/

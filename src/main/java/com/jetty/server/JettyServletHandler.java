@@ -1,6 +1,7 @@
 package com.jetty.server;
 
 import io.prometheus.client.Counter;
+import io.prometheus.client.Gauge;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.api.Result;
@@ -36,7 +37,7 @@ public class JettyServletHandler extends HttpServlet {
         failed_publish_to_kafka;
     }
 
-    static final Counter success_request_cnt = Counter.build().name(Events.success_request.name()).help("Total successful requests.").register();
+    static final Counter success_request_cnt = Counter.build().name(Events.success_request.name()).help("Incoming requests.").register();
     static final Counter failed_json_parsing_request_cnt = Counter.build().name(Events.failed_json_parsing_request.name()).help("Total failed json parsing requests.").register();
     static final Counter failed_json_translation_cnt = Counter.build().name(Events.failed_json_translation.name()).help("Total failed json translation requests").register();
     static final Counter failed_publish_to_kafka_cnt = Counter.build().name(Events.failed_publish_to_kafka.name()).help("Total failed publish to kafka requests.").register();

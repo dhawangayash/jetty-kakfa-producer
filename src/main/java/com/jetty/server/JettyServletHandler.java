@@ -1,6 +1,12 @@
 package com.jetty.server;
 
 import io.prometheus.client.Counter;
+import io.prometheus.client.Gauge;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.recipes.cache.NodeCache;
+import org.apache.curator.framework.recipes.cache.NodeCacheListener;
+import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.api.Result;
@@ -22,18 +28,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Copyright (c) 2017, DATAVISOR, INC.
- * All rights reserved.
- * __________________
- *
- * NOTICE: All information contained herein is, and remains the property
- * of DataVisor, Inc.  The intellectual and technical concepts contained
- * herein are proprietary to DataVisor, Inc. and may be covered by
- * U.S. and Foreign Patents, patents in process, and are protected by
- * trade secret or copyright law.  Dissemination of this information or
- * reproduction of this material is strictly forbidden unless prior
- * written permission is obtained from DataVisor, Inc.
- *
+ * Created by dhawangayash on 7/14/17.
  */
 public class JettyServletHandler extends HttpServlet {
 
@@ -47,7 +42,7 @@ public class JettyServletHandler extends HttpServlet {
         failed_publish_to_kafka;
     }
 
-    static final Counter success_request_cnt = Counter.build().name(Events.success_request.name()).help("Incoming requests.").register();
+    static final Counter success_request_cnt = Counter.build().name(Events.success_request.name()).help("Total successful requests.").register();
     static final Counter failed_json_parsing_request_cnt = Counter.build().name(Events.failed_json_parsing_request.name()).help("Total failed json parsing requests.").register();
     static final Counter failed_json_translation_cnt = Counter.build().name(Events.failed_json_translation.name()).help("Total failed json translation requests").register();
     static final Counter failed_publish_to_kafka_cnt = Counter.build().name(Events.failed_publish_to_kafka.name()).help("Total failed publish to kafka requests.").register();
@@ -55,6 +50,30 @@ public class JettyServletHandler extends HttpServlet {
     public JettyServletHandler() throws Exception {
         System.out.println("Starting Jetty HttpClient...");
         client.start();
+
+        CuratorFramework curatorFramework = CuratorFrameworkFactory
+                .newClient("localhost:2181,localhost:2182,localhost:2183",
+                new ExponentialBackoffRetry(1000, 3));
+        curatorFramework.start();
+        try {
+            curatorFramework.getZookeeperClient().blockUntilConnectedOrTimedOut();
+            String znodePath = "/test_node";
+            String originalData = new String(curatorFramework.getData().forPath(znodePath));
+            int i = 0;
+            System.out.println("======" + i + "======" + originalData);
+            NodeCache nodeCache = new NodeCache(curatorFramework, znodePath);
+            nodeCache.getListenable().addListener(
+                    new NodeCacheListener() {
+                        @Override
+                        public void nodeChanged() {
+                            String newData = new String(nodeCache.getCurrentData().getData());
+                            System.out.println("============" + newData);
+                        }
+                    });
+            nodeCache.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -82,6 +101,26 @@ public class JettyServletHandler extends HttpServlet {
 
         utilityClass.sendReqToKafkaExecutor(newJsonOBject);
         response.getWriter().println("SUCCESS");
+
+//      System.out.println(newJsonOBject.toString());
+
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//
+//                    sendReqToKafka(newJsonOBject);
+//                }
+//            }).start();
+
+//        String payload = "{\"application_nm\":\"datastream\",\"customer\":\"apple\"}";
+
+//        PostToKafka post2Kafka = new PostToKafka();
+//        try {
+//            post2Kafka.write2Kafka(payload);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        post2Kafka = null;
     }
 
     protected UtilityClass getInstance() {
@@ -159,6 +198,62 @@ public class JettyServletHandler extends HttpServlet {
             }
         }
     }
+
+    /**
+     * public void sendReqToKafka(JSONObject newJsonObject) {
+     * //        Timer timer = new Timer();
+     * HttpClientTransportOverHTTP transport = new HttpClientTransportOverHTTP();
+     * HttpClient httpClient = new HttpClient(transport, null);
+     * transport.setHttpClient(httpClient);
+     * <p>
+     * org.eclipse.jetty.client.api.Request request =
+     * httpClient.POST("http://0.0.0.0:8082/topics/topic-1234");
+     * <p>
+     * request.header(HttpHeader.CONTENT_TYPE, "application/vnd.kafka.json.v2+json")
+     * .header(HttpHeader.ACCEPT, "application/json");
+     * <p>
+     * request.content(new StringContentProvider(newJsonObject.toString()));
+     * try {
+     * httpClient.start();
+     * Timer timer = new Timer();
+     * request.send();
+     * timer.getElapsedTime();
+     * } catch (Exception e) {
+     * e.printStackTrace();
+     * }
+     * <p>
+     * request.send(new BufferingResponseListener() {
+     *
+     * @Override public void onComplete(Result result) {
+     * if (result.isFailed()) {
+     * System.out.println(result.getResponse().getStatus());
+     * System.out.println(result);
+     * System.out.println("OMG");
+     * }
+     * if (result.isSucceeded()) {
+     * System.out.println("WOW!!");
+     * }
+     * }
+     * });
+     * }
+     * <p>
+     * public void sendReqToKafkaPOST(JSONObject newJsonObject) {
+     * CloseableHttpClient client = HttpClients.createMinimal();
+     * HttpPost post = new HttpPost("http://0.0.0.0:8082/topics/topic-rest-client");
+     * post.setHeader(HttpHeaders.CONTENT_TYPE, "application/vnd.kafka.json.v2+json");
+     * try {
+     * post.setEntity(new StringEntity(newJsonObject.toString()));
+     * <p>
+     * Timer timer = new Timer();
+     * CloseableHttpResponse response = client.execute(post);
+     * timer.getElapsedTime();
+     * System.out.println(response.getStatusLine().getStatusCode());
+     * client.close();
+     * } catch (IOException e) {
+     * e.printStackTrace();
+     * }
+     * }
+     */
 
     class Timer {
         long startTime = System.currentTimeMillis();
